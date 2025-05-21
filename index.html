@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Копилка</title>
+  <title>💰 Моя Копилка</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -37,20 +37,26 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
-    input, button {
+    input[type="text"], input[type="file"] {
       font-size: 16px;
       margin: 10px 0;
       padding: 10px;
       width: 100%;
       border: 1px solid #ccc;
       border-radius: 5px;
+      box-sizing: border-box;
     }
 
     button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
       background-color: #3f51b5;
       color: white;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
-      transition: background 0.3s;
     }
 
     button:hover {
@@ -58,28 +64,71 @@
     }
 
     .goal {
-      margin-top: 30px;
+      margin-top: 20px;
       border-top: 1px solid #ccc;
-      padding-top: 20px;
-      position: relative;
+      padding-top: 15px;
     }
 
     .goal h3 {
       margin: 0 0 10px;
     }
 
-    .info {
-      font-size: 14px;
-      color: #555;
+    .goal img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    .progress-bar {
+      background: #e0e0e0;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress {
+      background: #4caf50;
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .btn {
+      background: #3f51b5;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      user-select: none;
+      flex: 1;
+      text-align: center;
+      margin: 0 5px;
+      transition: background 0.3s;
+    }
+
+    .btn:hover {
+      background: #303f9f;
+    }
+
+    .total {
+      margin-top: 10px;
+      font-weight: bold;
     }
 
     .celebration {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.95);
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(255,255,255,0.95);
       z-index: 1000;
       display: flex;
       flex-direction: column;
@@ -118,10 +167,10 @@
   <header>💰 Моя Копилка</header>
 
   <div class="container">
-    <input type="text" id="goalName" placeholder="Название цели (например: Новый телефон)">
-    <input type="number" id="goalAmount" placeholder="Сумма для цели (руб.)">
-    <input type="number" id="weeklySave" placeholder="Сколько откладывать в неделю (руб.)">
-    <button onclick="addGoal()">Добавить цель</button>
+    <input type="text" id="goalName" placeholder="Название цели (например: Новый телефон)" tabindex="1" aria-label="Название цели" />
+    <input type="text" id="goalAmount" placeholder="Цель (руб.)" tabindex="2" aria-label="Сумма цели" />
+    <input type="file" id="goalImage" accept="image/*" tabindex="3" aria-label="Загрузить изображение цели" />
+    <button onclick="addGoal()" tabindex="4">Добавить цель</button>
   </div>
 
   <div class="container" id="goalsList"></div>
@@ -133,58 +182,83 @@
       localStorage.setItem('goals', JSON.stringify(goals));
     }
 
+    function isNumeric(value) {
+      return !isNaN(parseFloat(value)) && isFinite(value) && value.trim() !== '';
+    }
+
     function addGoal() {
       const name = document.getElementById('goalName').value.trim();
-      const amount = parseFloat(document.getElementById('goalAmount').value);
-      const weekly = parseFloat(document.getElementById('weeklySave').value);
+      const amountStr = document.getElementById('goalAmount').value.trim();
+      const imageInput = document.getElementById('goalImage');
+      const file = imageInput.files[0];
 
-      if (!name || isNaN(amount) || isNaN(weekly) || amount <= 0 || weekly <= 0) {
-        alert("Заполните все поля корректно.");
+      if (!name) {
+        alert("Введите название цели.");
         return;
       }
 
-      const weeks = Math.ceil(amount / weekly);
-      const months = (weeks / 4).toFixed(1);
+      if (!isNumeric(amountStr)) {
+        alert("Введите корректную сумму.");
+        return;
+      }
 
-      const newGoal = { name, amount, weekly, weeks };
-      goals.push(newGoal);
-      saveGoals();
+      const amount = parseFloat(amountStr);
+      if (amount <= 0) {
+        alert("Сумма должна быть больше 0.");
+        return;
+      }
 
-      renderGoals();
+      let imageUrl = "";
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          imageUrl = e.target.result;
+          const newGoal = {
+            name,
+            amount,
+            current: 0,
+            image: imageUrl
+          };
+          goals.push(newGoal);
+          saveGoals();
+          renderGoals();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const newGoal = {
+          name,
+          amount,
+          current: 0
+        };
+        goals.push(newGoal);
+        saveGoals();
+        renderGoals();
+      }
+
+      // Очистка полей
+      document.getElementById('goalName').value = '';
+      document.getElementById('goalAmount').value = '';
+      document.getElementById('goalImage').value = '';
     }
 
-    function renderGoals() {
-      const list = document.getElementById('goalsList');
-      list.innerHTML = '';
+    function updateGoal(index, delta) {
+      const goal = goals[index];
+      const newCurrent = Math.max(goal.current + delta, 0);
+      goal.current = Math.min(newCurrent, goal.amount);
+      saveGoals();
+      renderGoals();
 
-      goals.forEach((goal, index) => {
-        const goalDiv = document.createElement('div');
-        goalDiv.className = 'goal';
-
-        goalDiv.innerHTML = `
-          <h3>${goal.name}</h3>
-          <p><strong>Цель:</strong> ${goal.amount} руб.</p>
-          <p><strong>Откладываю в неделю:</strong> ${goal.weekly} руб.</p>
-          <p class="info">Будет накоплено за <strong>${goal.weeks}</strong> недель (~<strong>${(goal.weeks / 4).toFixed(1)}</strong> месяцев)</p>
-        `;
-
-        // Добавляем эффект через 5 секунд (для демонстрации)
-        setTimeout(() => {
-          showCelebration(goal.name, index);
-        }, 5000 + index * 1000); // с задержкой для нескольких целей
-
-        list.appendChild(goalDiv);
-      });
+      if (goal.current === goal.amount) {
+        showCelebration(goal.name, index);
+      }
     }
 
     function showCelebration(name, index) {
-      // Создаём экран с поздравлением
       const celebration = document.createElement('div');
       celebration.className = 'celebration';
       celebration.innerHTML = `<h2>🎉 Ты молодец, что накопил "${name}"! 🎉</h2>`;
       document.body.appendChild(celebration);
 
-      // Конфетти
       for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
@@ -195,11 +269,10 @@
         document.body.appendChild(confetti);
       }
 
-      // Удаление цели через 2 секунды
       setTimeout(() => {
         goals.splice(index, 1);
         saveGoals();
-        location.reload(); // Перезагружаем, чтобы обновить список
+        location.reload();
       }, 2000);
     }
 
@@ -212,10 +285,65 @@
       return color;
     }
 
-    // При загрузке страницы
+    function renderGoals() {
+      const list = document.getElementById('goalsList');
+      list.innerHTML = '';
+
+      goals.forEach((goal, index) => {
+        const goalDiv = document.createElement('div');
+        goalDiv.className = 'goal';
+
+        const percent = ((goal.current / goal.amount) * 100).toFixed(0);
+
+        goalDiv.innerHTML = `
+          <h3>${goal.name}</h3>
+          <p>Цель: ${goal.amount} руб.</p>
+          <p>Текущий прогресс: ${goal.current} руб.</p>
+          <div class="progress-bar" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress" style="width: ${percent}%"></div>
+          </div>
+          <p><strong>${percent}%</strong></p>
+          <div class="controls">
+            <span class="btn" onclick="promptAndAdd(${index}, '+')" tabindex="0" role="button" aria-label="Добавить к цели">+</span>
+            <span class="btn" onclick="promptAndAdd(${index}, '-') "tabindex="0" role="button" aria-label="Убрать от цели">−</span>
+          </div>
+        `;
+
+        if (goal.image) {
+          const img = document.createElement('img');
+          img.src = goal.image;
+          goalDiv.appendChild(img);
+        }
+
+        list.appendChild(goalDiv);
+      });
+    }
+
+    function promptAndAdd(index, sign) {
+      const amount = prompt(`Введите сумму ${sign === '+' ? 'для пополнения' : 'для уменьшения'}:`);
+      if (amount && isNumeric(amount)) {
+        const delta = sign === '+' ? parseFloat(amount) : -parseFloat(amount);
+        updateGoal(index, delta);
+      }
+    }
+
     window.onload = () => {
       renderGoals();
+      document.getElementById('goalName').focus();
     };
+
+    // Обработка Enter для добавления цели
+    document.querySelectorAll('input').forEach((input, idx, arr) => {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          if (idx < arr.length - 1) {
+            arr[idx + 1].focus();
+          } else {
+            addGoal();
+          }
+        }
+      });
+    });
   </script>
 
 </body>
