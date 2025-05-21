@@ -78,6 +78,18 @@
       border-radius: 10px;
       margin-top: 10px;
       display: block;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .goal img.fullscreen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 1000;
+      object-fit: contain;
+      background: black;
+      transform: scale(1);
     }
 
     .progress-bar {
@@ -100,6 +112,7 @@
       justify-content: space-between;
       align-items: center;
       margin-top: 10px;
+      flex-wrap: wrap;
     }
 
     .btn {
@@ -111,7 +124,7 @@
       user-select: none;
       flex: 1;
       text-align: center;
-      margin: 0 5px;
+      margin: 5px;
       transition: background 0.3s;
     }
 
@@ -119,9 +132,9 @@
       background: #303f9f;
     }
 
-    .total {
-      margin-top: 10px;
-      font-weight: bold;
+    .info {
+      font-size: 14px;
+      color: #555;
     }
 
     .celebration {
@@ -169,8 +182,9 @@
   <div class="container">
     <input type="text" id="goalName" placeholder="Название цели (например: Новый телефон)" tabindex="1" aria-label="Название цели" />
     <input type="text" id="goalAmount" placeholder="Цель (руб.)" tabindex="2" aria-label="Сумма цели" />
-    <input type="file" id="goalImage" accept="image/*" tabindex="3" aria-label="Загрузить изображение цели" />
-    <button onclick="addGoal()" tabindex="4">Добавить цель</button>
+    <input type="text" id="weeklySave" placeholder="Еженедельный взнос (руб.)" tabindex="3" aria-label="Еженедельный взнос" />
+    <input type="file" id="goalImage" accept="image/*" tabindex="4" aria-label="Загрузить изображение цели" />
+    <button onclick="addGoal()" tabindex="5">Добавить цель</button>
   </div>
 
   <div class="container" id="goalsList"></div>
@@ -189,6 +203,7 @@
     function addGoal() {
       const name = document.getElementById('goalName').value.trim();
       const amountStr = document.getElementById('goalAmount').value.trim();
+      const weeklyStr = document.getElementById('weeklySave').value.trim();
       const imageInput = document.getElementById('goalImage');
       const file = imageInput.files[0];
 
@@ -197,14 +212,16 @@
         return;
       }
 
-      if (!isNumeric(amountStr)) {
-        alert("Введите корректную сумму.");
+      if (!isNumeric(amountStr) || !isNumeric(weeklyStr)) {
+        alert("Введите корректные числа.");
         return;
       }
 
       const amount = parseFloat(amountStr);
-      if (amount <= 0) {
-        alert("Сумма должна быть больше 0.");
+      const weekly = parseFloat(weeklyStr);
+
+      if (amount <= 0 || weekly <= 0) {
+        alert("Сумма и еженедельный взнос должны быть больше 0.");
         return;
       }
 
@@ -216,6 +233,7 @@
           const newGoal = {
             name,
             amount,
+            weekly,
             current: 0,
             image: imageUrl
           };
@@ -228,6 +246,7 @@
         const newGoal = {
           name,
           amount,
+          weekly,
           current: 0
         };
         goals.push(newGoal);
@@ -238,6 +257,7 @@
       // Очистка полей
       document.getElementById('goalName').value = '';
       document.getElementById('goalAmount').value = '';
+      document.getElementById('weeklySave').value = '';
       document.getElementById('goalImage').value = '';
     }
 
@@ -250,6 +270,14 @@
 
       if (goal.current === goal.amount) {
         showCelebration(goal.name, index);
+      }
+    }
+
+    function deleteGoal(index) {
+      if (confirm("Вы уверены, что хотите удалить эту цель?")) {
+        goals.splice(index, 1);
+        saveGoals();
+        renderGoals();
       }
     }
 
@@ -285,6 +313,18 @@
       return color;
     }
 
+    function promptAndAdd(index, sign) {
+      const amount = prompt(`Введите сумму ${sign === '+' ? 'для пополнения' : 'для уменьшения'}:`);
+      if (amount && isNumeric(amount)) {
+        const delta = sign === '+' ? parseFloat(amount) : -parseFloat(amount);
+        updateGoal(index, delta);
+      }
+    }
+
+    function toggleFullscreen(img) {
+      img.classList.toggle("fullscreen");
+    }
+
     function renderGoals() {
       const list = document.getElementById('goalsList');
       list.innerHTML = '';
@@ -294,11 +334,16 @@
         goalDiv.className = 'goal';
 
         const percent = ((goal.current / goal.amount) * 100).toFixed(0);
+        const remaining = goal.amount - goal.current;
+        const weeksLeft = remaining > 0 ? Math.ceil(remaining / goal.weekly) : 0;
 
         goalDiv.innerHTML = `
           <h3>${goal.name}</h3>
-          <p>Цель: ${goal.amount} руб.</p>
-          <p>Текущий прогресс: ${goal.current} руб.</p>
+          <p><strong>Цель:</strong> ${goal.amount} руб.</p>
+          <p><strong>Текущий прогресс:</strong> ${goal.current} руб.</p>
+          <p><strong>Осталось:</strong> ${remaining} руб.</p>
+          <p><strong>Еженедельный взнос:</strong> ${goal.weekly} руб.</p>
+          <p class="info">Примерно: <strong>${weeksLeft}</strong> недель</p>
           <div class="progress-bar" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
             <div class="progress" style="width: ${percent}%"></div>
           </div>
@@ -306,25 +351,19 @@
           <div class="controls">
             <span class="btn" onclick="promptAndAdd(${index}, '+')" tabindex="0" role="button" aria-label="Добавить к цели">+</span>
             <span class="btn" onclick="promptAndAdd(${index}, '-') "tabindex="0" role="button" aria-label="Убрать от цели">−</span>
+            <span class="btn" onclick="deleteGoal(${index})" tabindex="0" role="button" aria-label="Удалить цель">🗑 Удалить</span>
           </div>
         `;
 
         if (goal.image) {
           const img = document.createElement('img');
           img.src = goal.image;
+          img.onclick = () => toggleFullscreen(img);
           goalDiv.appendChild(img);
         }
 
         list.appendChild(goalDiv);
       });
-    }
-
-    function promptAndAdd(index, sign) {
-      const amount = prompt(`Введите сумму ${sign === '+' ? 'для пополнения' : 'для уменьшения'}:`);
-      if (amount && isNumeric(amount)) {
-        const delta = sign === '+' ? parseFloat(amount) : -parseFloat(amount);
-        updateGoal(index, delta);
-      }
     }
 
     window.onload = () => {
