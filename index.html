@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Копилка</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      background: #3f51b5;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      margin-top: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    input, button {
+      font-size: 16px;
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #3f51b5;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #303f9f;
+    }
+
+    .goal {
+      margin-top: 30px;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+      position: relative;
+    }
+
+    .goal h3 {
+      margin: 0 0 10px;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .celebration {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeOut 2s forwards;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; visibility: hidden; }
+    }
+
+    .celebration h2 {
+      font-size: 24px;
+      color: #3f51b5;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: red;
+      animation: confettiFall 2s linear infinite;
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(0) rotate(0); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>💰 Моя Копилка</header>
+
+  <div class="container">
+    <input type="text" id="goalName" placeholder="Название цели (например: Новый телефон)">
+    <input type="number" id="goalAmount" placeholder="Сумма для цели (руб.)">
+    <input type="number" id="weeklySave" placeholder="Сколько откладывать в неделю (руб.)">
+    <button onclick="addGoal()">Добавить цель</button>
+  </div>
+
+  <div class="container" id="goalsList"></div>
+
+  <script>
+    let goals = JSON.parse(localStorage.getItem('goals') || '[]');
+
+    function saveGoals() {
+      localStorage.setItem('goals', JSON.stringify(goals));
+    }
+
+    function addGoal() {
+      const name = document.getElementById('goalName').value.trim();
+      const amount = parseFloat(document.getElementById('goalAmount').value);
+      const weekly = parseFloat(document.getElementById('weeklySave').value);
+
+      if (!name || isNaN(amount) || isNaN(weekly) || amount <= 0 || weekly <= 0) {
+        alert("Заполните все поля корректно.");
+        return;
+      }
+
+      const weeks = Math.ceil(amount / weekly);
+      const months = (weeks / 4).toFixed(1);
+
+      const newGoal = { name, amount, weekly, weeks };
+      goals.push(newGoal);
+      saveGoals();
+
+      renderGoals();
+    }
+
+    function renderGoals() {
+      const list = document.getElementById('goalsList');
+      list.innerHTML = '';
+
+      goals.forEach((goal, index) => {
+        const goalDiv = document.createElement('div');
+        goalDiv.className = 'goal';
+
+        goalDiv.innerHTML = `
+          <h3>${goal.name}</h3>
+          <p><strong>Цель:</strong> ${goal.amount} руб.</p>
+          <p><strong>Откладываю в неделю:</strong> ${goal.weekly} руб.</p>
+          <p class="info">Будет накоплено за <strong>${goal.weeks}</strong> недель (~<strong>${(goal.weeks / 4).toFixed(1)}</strong> месяцев)</p>
+        `;
+
+        // Добавляем эффект через 5 секунд (для демонстрации)
+        setTimeout(() => {
+          showCelebration(goal.name, index);
+        }, 5000 + index * 1000); // с задержкой для нескольких целей
+
+        list.appendChild(goalDiv);
+      });
+    }
+
+    function showCelebration(name, index) {
+      // Создаём экран с поздравлением
+      const celebration = document.createElement('div');
+      celebration.className = 'celebration';
+      celebration.innerHTML = `<h2>🎉 Ты молодец, что накопил "${name}"! 🎉</h2>`;
+      document.body.appendChild(celebration);
+
+      // Конфетти
+      for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = `${Math.random() * 100}%`;
+        confetti.style.backgroundColor = getRandomColor();
+        confetti.style.animationDuration = `${Math.random() * 1 + 1}s`;
+        confetti.style.animationDelay = `${Math.random() * 2}s`;
+        document.body.appendChild(confetti);
+      }
+
+      // Удаление цели через 2 секунды
+      setTimeout(() => {
+        goals.splice(index, 1);
+        saveGoals();
+        location.reload(); // Перезагружаем, чтобы обновить список
+      }, 2000);
+    }
+
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    // При загрузке страницы
+    window.onload = () => {
+      renderGoals();
+    };
+  </script>
+
+</body>
+</html>
